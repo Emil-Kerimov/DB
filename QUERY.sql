@@ -470,3 +470,120 @@ JOIN WallpaperOrders WO ON O.Order_ID = WO.Order_ID
 JOIN Wallpaper W ON WO.Wallpaper_ID = W.Wallpaper_ID
 GROUP BY O.Order_ID, O.OrderDate, C.Email
 ORDER BY TotalPrice DESC;
+
+SELECT COUNT(*) AS WallpaperCount
+FROM Wallpaper;
+
+SELECT COUNT(*) AS CustomerCount
+FROM Customer;
+
+SELECT COUNT(*) AS IndividualCustomerCount
+FROM IndividualCustomer;
+
+SELECT COUNT(*) AS LegalCustomerCount
+FROM LegalCustomer;
+
+SELECT COUNT(*) AS OrdersCount
+FROM Orders;
+
+SELECT COUNT(*) AS WallpaperOrdersCount
+FROM WallpaperOrders;
+
+-- avg price of walpappers
+SELECT
+AVG(Price) AS AvgPrice
+From Wallpaper;
+
+-- count of orders for each client
+SELECT 
+	c.Email,
+	COUNT(o.Order_ID) AS OrderCount
+From Customer c
+LEFT JOIN Orders o ON c.Customer_ID = o.Customer_ID
+Group BY c.Email
+
+-- топ 3 найпопул€рн≥ших шпалер
+SELECT TOP 3
+    w.Name,
+    SUM(wo.Quantity) AS TotalSold
+FROM Wallpaper w
+JOIN WallpaperOrders wo ON w.Wallpaper_ID = wo.Wallpaper_ID
+GROUP BY w.Name
+ORDER BY TotalSold DESC;
+
+-- рейтинг за продажами
+SELECT 
+    w.Name,
+    w.Price,
+    SUM(wo.Quantity) AS TotalSold,
+    RANK() OVER (ORDER BY SUM(wo.Quantity) DESC) AS SalesRank
+FROM Wallpaper w
+JOIN WallpaperOrders wo ON w.Wallpaper_ID = wo.Wallpaper_ID
+GROUP BY w.Name, w.Price;
+
+-- по≥врн€нн€ ц≥ни з середньою
+SELECT 
+    Name,
+    Price,
+    AVG(Price) OVER() AS AvgPrice,
+    Price - AVG(Price) OVER() AS PriceDifference
+FROM Wallpaper;
+
+-- наростаюч≥ продаж≥ по м≥с€ц€х
+SELECT 
+    YEAR(o.OrderDate) AS Year,
+    MONTH(o.OrderDate) AS Month,
+    SUM(wo.Quantity) AS MonthlySales,
+    SUM(SUM(wo.Quantity)) OVER (ORDER BY YEAR(o.OrderDate), MONTH(o.OrderDate)) AS CumulativeSales
+FROM Orders o
+JOIN WallpaperOrders wo ON o.Order_ID = wo.Order_ID
+GROUP BY YEAR(o.OrderDate), MONTH(o.OrderDate);
+
+-- форматуванн€ ≥нформац≥њ про кл≥Їнт≥в
+SELECT 
+    Customer_ID,
+    UPPER(LEFT(Type, 1)) + LOWER(SUBSTRING(Type, 2, LEN(Type))) AS FormattedType,
+    CONCAT(LEFT(Email, 3), '...', RIGHT(Email, 7)) AS ShortEmail
+FROM Customer;
+
+SELECT 
+    Name,
+    LEN(Name) AS NameLength,
+    CHARINDEX(' ', Name) AS FirstSpacePosition,
+    REPLACE(Name, ' ', '-') AS NameWithDashes
+FROM Wallpaper;
+
+-- розд≥л адрес юр кл≥Їнт≥в
+SELECT 
+    Business_Address,
+    LEFT(Business_Address, CHARINDEX(',', Business_Address) - 1) AS Street,
+    SUBSTRING(Business_Address, 
+              CHARINDEX(',', Business_Address) + 2,
+              LEN(Business_Address)) AS CityAndState
+FROM LegalCustomer;
+
+--анал≥з часу виконанн€ замовлень
+SELECT 
+    Order_ID,
+    OrderDate,
+    DAY(OrderDate) AS OrderDay,
+    DATENAME(weekday, OrderDate) AS WeekdayName,
+    DATEDIFF(day, OrderDate, GETDATE()) AS DaysSinceOrder
+FROM Orders;
+
+-- продаж≥ по кварталах
+SELECT 
+    DATEPART(quarter, o.OrderDate) AS Quarter,
+    YEAR(o.OrderDate) AS Year,
+    COUNT(*) AS OrderCount
+FROM Orders o
+GROUP BY DATEPART(quarter, o.OrderDate), YEAR(o.OrderDate)
+ORDER BY Year, Quarter;
+
+-- останн≥й день м≥с€ц€ дл€ кожного замовленн€
+SELECT 
+    Order_ID,
+    OrderDate,
+    EOMONTH(OrderDate) AS MonthEndDate
+FROM Orders
+WHERE OrderDate BETWEEN '2023-01-01' AND '2023-12-31';
