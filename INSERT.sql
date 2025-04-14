@@ -97,7 +97,9 @@ INSERT INTO Wallpaper (Name, Price, Stock) VALUES
 ('Middle Eastern', 84.50, 6),
 ('Southwestern', 86.75, 4),
 ('Tropical', 88.99, 2),
-('Exotic', 90.50, 1);
+('Exotic', 90.50, 1),
+('NorthTrop', 88.75, 3),
+('Midle Tropical', 86.99, 5);
 
 -- Додавання 100 записів у таблицю Customer (50 Individual, 50 Legal)
 INSERT INTO Customer (Email, Type) VALUES
@@ -459,7 +461,7 @@ INSERT INTO WallpaperOrders (Wallpaper_ID, Order_ID, Quantity) VALUES
 (38, 33, 1),
 (39, 34, 2),
 (40, 35, 4),
-(41, 36, 3);
+(41, 36, 3),
 (42, 37, 5),
 (43, 38, 2),
 (44, 39, 1),
