@@ -392,6 +392,21 @@ JOIN Orders o ON c.Customer_ID = o.Customer_ID
 JOIN WallpaperOrders wo ON o.Order_ID = wo.Order_ID
 WHERE wo.Quantity > 2;
 
+-- Отримання списку всіх контактів (email індивідуальних клієнтів та адреси юридичних)
+SELECT 
+    c.Email AS ContactInfo,
+    'Individual' AS ContactType
+FROM Customer c
+WHERE c.Type = 'Individual'
+
+UNION
+
+SELECT 
+    lc.Business_Address AS ContactInfo,
+    'Legal' AS ContactType
+FROM LegalCustomer lc
+JOIN Customer c ON lc.Customer_ID = c.Customer_ID;
+
 -- Сортування шпалер за ціною за спаданням
 SELECT Name, Price FROM Wallpaper
 ORDER BY Price DESC;
@@ -408,3 +423,50 @@ SELECT C.Email, O.Quantity
 FROM Customer C
 JOIN Orders O ON C.Customer_ID = O.Customer_ID
 WHERE O.Quantity > 5;
+
+-- 2. Клієнти, які робили замовлення на суму >500
+SELECT c.* FROM Customer c
+WHERE c.Customer_ID IN (
+    SELECT o.Customer_ID FROM Orders o
+    JOIN WallpaperOrders wo ON o.Order_ID = wo.Order_ID
+    JOIN Wallpaper w ON wo.Wallpaper_ID = w.Wallpaper_ID
+    GROUP BY o.Customer_ID
+    HAVING SUM(wo.Quantity * w.Price) > 500
+);
+ 
+-- 2. Шпалери, які замовляли більше 1 разів
+SELECT 
+    w.Name,
+    COUNT(wo.Order_ID) AS OrderCount
+FROM Wallpaper w
+JOIN WallpaperOrders wo ON w.Wallpaper_ID = wo.Wallpaper_ID
+GROUP BY w.Name
+HAVING COUNT(wo.Order_ID) > 1;
+
+-- 3. Клієнти з більш ніж 1 замовленнями
+SELECT 
+    c.Email,
+    c.Type,
+    COUNT(o.Order_ID) AS OrderCount
+FROM Customer c
+JOIN Orders o ON c.Customer_ID = o.Customer_ID
+GROUP BY c.Email, c.Type
+HAVING COUNT(o.Order_ID) > 1;
+ 
+-- 5. Шпалери з загальною сумою продажів >10
+SELECT 
+    w.Name,
+    SUM(wo.Quantity * w.Price) AS TotalSales
+FROM Wallpaper w
+JOIN WallpaperOrders wo ON w.Wallpaper_ID = wo.Wallpaper_ID
+GROUP BY w.Name
+HAVING SUM(wo.Quantity * w.Price) > 10;
+
+-- Отримання даних про замовлення, клієнтів і шпалери з підрахунком загальної суми кожного замовлення
+SELECT O.Order_ID, O.OrderDate, C.Email, SUM(W.Price * WO.Quantity) AS TotalPrice
+FROM Orders O
+JOIN Customer C ON O.Customer_ID = C.Customer_ID
+JOIN WallpaperOrders WO ON O.Order_ID = WO.Order_ID
+JOIN Wallpaper W ON WO.Wallpaper_ID = W.Wallpaper_ID
+GROUP BY O.Order_ID, O.OrderDate, C.Email
+ORDER BY TotalPrice DESC;

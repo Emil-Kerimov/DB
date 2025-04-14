@@ -38,3 +38,19 @@ CREATE TABLE WallpaperOrders (
  Quantity INT NOT NULL CHECK (Quantity > 0),
  PRIMARY KEY (Wallpaper_ID, Order_ID)
  );
+
+ -- Створення таблиці Categories
+CREATE TABLE Lvl (
+    LvlID INT PRIMARY KEY,
+    LvlName VARCHAR(255)
+);
+
+-- Створення таблиці Products
+CREATE TABLE Products (
+    ProductID INT PRIMARY KEY,
+    ProductName VARCHAR(255),
+    LvlID INT,
+    FOREIGN KEY (LvlID) REFERENCES Lvl(LvlID)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+);
