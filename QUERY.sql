@@ -1,6 +1,6 @@
 -- Вибірка всіх шпалер
 SELECT * FROM Wallpaper;
-
+SELECT * FROM Wallpaper WHERE Price > 25.00;
 -- Вибірка всіх клієнтів
 SELECT * FROM Customer;
 
@@ -587,3 +587,37 @@ SELECT
     EOMONTH(OrderDate) AS MonthEndDate
 FROM Orders
 WHERE OrderDate BETWEEN '2023-01-01' AND '2023-12-31';
+
+-- l5
+-- Запит з фільтрацією WHERE
+SELECT Name, Price FROM Wallpaper WHERE Stock < 50;
+
+-- Запит з сортуванням ORDER BY
+SELECT * FROM Orders ORDER BY OrderDate DESC;
+
+-- Запит з JOIN
+SELECT w.Name, wo.Quantity 
+FROM Wallpaper w
+JOIN WallpaperOrders wo ON w.Wallpaper_ID = wo.Wallpaper_ID
+WHERE wo.Order_ID = 10;
+-- t5
+-- 1. Видаляємо foreign key constraint з таблиці WallpaperOrders
+ALTER TABLE WallpaperOrders DROP CONSTRAINT FK__Wallpaper__Wallp__4E739D3B;
+
+-- 2. Видаляємо первинний ключ з таблиці Wallpaper
+ALTER TABLE Wallpaper DROP CONSTRAINT PK__Wallpape__8AF9E60299F35DB4;
+
+-- 3. Створюємо новий кластеризований індекс на стовпці Wallpaper_ID
+CREATE CLUSTERED INDEX IX_Wallpaper_Clustered ON Wallpaper(Wallpaper_ID);
+
+-- 4. Відновлюємо первинний ключ як некластеризований індекс
+ALTER TABLE Wallpaper ADD CONSTRAINT PK_Wallpaper PRIMARY KEY NONCLUSTERED (Wallpaper_ID);
+
+-- 5. Відновлюємо foreign key constraint
+ALTER TABLE WallpaperOrders 
+ADD CONSTRAINT FK_WallpaperOrders_Wallpaper 
+FOREIGN KEY (Wallpaper_ID) REFERENCES Wallpaper(Wallpaper_ID);
+-- t6
+CREATE NONCLUSTERED INDEX IX_Wallpaper_Price ON Wallpaper(Price);
+--t7
+CREATE UNIQUE INDEX IX_Customer_Email_Unique ON Customer(Email);
