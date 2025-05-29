@@ -721,3 +721,181 @@ WHERE
     i.object_id = OBJECT_ID('Wallpaper') OR
     i.object_id = OBJECT_ID('Customer') OR
     i.object_id = OBJECT_ID('Orders');
+
+	-- p6 t3
+BEGIN TRANSACTION;
+    -- Оновлення ціни шпалер
+    UPDATE Wallpaper SET Price = Price * 1.1 WHERE Stock > 50;
+    
+    -- Додавання нового замовлення
+    INSERT INTO Orders (Customer_ID, OrderDate, Quantity)
+    VALUES (1, GETDATE(), 3);
+COMMIT TRANSACTION;
+--p6 t 4
+BEGIN TRANSACTION;
+    -- Зменшення запасів
+    UPDATE Wallpaper SET Stock = Stock - 5 WHERE Wallpaper_ID = 1;
+    
+    -- Додавання запису про продаж
+    INSERT INTO WallpaperOrders (Wallpaper_ID, Order_ID, Quantity)
+    VALUES (1, 1, 5);
+    
+    -- Умова для відкату
+    IF (SELECT Stock FROM Wallpaper WHERE Wallpaper_ID = 1) < 0
+    BEGIN
+        ROLLBACK TRANSACTION;
+        PRINT 'Transaction rolled back due to negative stock';
+    END
+    ELSE
+        COMMIT TRANSACTION;
+
+--p6 t5
+BEGIN TRANSACTION;
+    -- Оновлення даних клієнта
+    UPDATE Customer SET Email = 'new.email@example.com' WHERE Customer_ID = 1;
+    
+    IF @@ERROR <> 0
+    BEGIN
+        ROLLBACK TRANSACTION;
+        PRINT 'Error occurred during customer update';
+    END
+    ELSE
+        COMMIT TRANSACTION;
+--p6 t6
+BEGIN TRANSACTION;
+    -- Точка збереження
+    SAVE TRANSACTION BeforeUpdate;
+    
+    -- Оновлення цін
+    UPDATE Wallpaper SET Price = Price * 99.2;
+    
+    -- Перевірка умови
+    IF (SELECT AVG(Price) FROM Wallpaper) > 100
+    BEGIN
+        ROLLBACK TRANSACTION BeforeUpdate;
+        PRINT 'Prices too high, rolling back to savepoint';
+    END
+    
+    COMMIT TRANSACTION;
+
+--tt7
+BEGIN TRANSACTION;
+BEGIN TRY
+    -- Оновлення замовлення
+    UPDATE Orders SET Quantity = 10 WHERE Order_ID = 1;
+    
+    -- Оновлення запасів
+    UPDATE Wallpaper SET Stock = Stock - 10 WHERE Wallpaper_ID = 1;
+    
+    COMMIT TRANSACTION;
+    PRINT 'Transaction completed successfully';
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION;
+    PRINT 'Error occurred: ' + ERROR_MESSAGE();
+END CATCH;
+--t8
+-- Спочатку створимо таблицю для логування
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'AuditLog')
+CREATE TABLE AuditLog (
+    LogID INT IDENTITY PRIMARY KEY,
+    Action NVARCHAR(200),
+    Timestamp DATETIME,
+    UserName NVARCHAR(100) DEFAULT SYSTEM_USER
+);
+
+BEGIN TRANSACTION;
+    -- Оновлення даних
+    UPDATE Wallpaper SET Stock = 100 WHERE Wallpaper_ID = 1;
+    
+    -- Логування змін
+    INSERT INTO AuditLog (Action, Timestamp)
+    VALUES ('Updated wallpaper stock for ID 1', GETDATE());
+    
+COMMIT TRANSACTION;
+SELECT * FROM AuditLog;
+BEGIN TRANSACTION;
+BEGIN TRY
+    -- 1. Додаємо нового клієнта
+    INSERT INTO Customer (Email, Type)
+    VALUES ('new.customer@example.com', 'Individual');
+    
+    -- 2. Додаємо деталі фізичної особи
+    INSERT INTO IndividualCustomer (Customer_ID, Name, Surname, Phone)
+    VALUES (SCOPE_IDENTITY(), 'Іван', 'Петренко', '380991234567');
+    
+    -- 3. Додаємо перше замовлення
+    INSERT INTO Orders (Customer_ID, OrderDate, Quantity)
+    VALUES (SCOPE_IDENTITY(), GETDATE(), 2);
+    
+    -- Якщо все успішно - коміт
+    COMMIT TRANSACTION;
+    PRINT 'Транзакція успішно виконана';
+END TRY
+BEGIN CATCH
+    -- При помилці - відкат
+    ROLLBACK TRANSACTION;
+    PRINT 'Помилка: ' + ERROR_MESSAGE();
+    PRINT 'Транзакція відкочена через помилку';
+END CATCH;
+
+--t10
+-- Спочатку створимо таблицю для підрахунку клієнтів
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'CustomerTypeCount')
+CREATE TABLE CustomerTypeCount (
+    Type NVARCHAR(50) PRIMARY KEY,
+    Count INT DEFAULT 0
+);
+
+-- Транзакція для додавання клієнта з оновленням лічильника
+BEGIN TRANSACTION;
+BEGIN TRY
+    DECLARE @CustomerType NVARCHAR(50) = 'Individual';
+    
+    -- 1. Додаємо нового клієнта
+    INSERT INTO Customer (Email, Type)
+    VALUES ('another.customer@example.com', @CustomerType);
+    
+    -- 2. Оновлюємо лічильник для типу клієнта
+    IF EXISTS (SELECT 1 FROM CustomerTypeCount WHERE Type = @CustomerType)
+        UPDATE CustomerTypeCount SET Count = Count + 1 WHERE Type = @CustomerType;
+    ELSE
+        INSERT INTO CustomerTypeCount (Type, Count) VALUES (@CustomerType, 1);
+    
+    COMMIT TRANSACTION;
+    PRINT 'Клієнта додано та лічильник оновлено';
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION;
+    PRINT 'Помилка: ' + ERROR_MESSAGE();
+END CATCH;
+
+--11
+BEGIN TRANSACTION;
+BEGIN TRY
+    -- 1. Додаємо нові шпалери
+    INSERT INTO Wallpaper (ProductName, Price, Stock)
+    VALUES ('Нова колекція', 49.99, 100);
+    
+    DECLARE @NewWallpaperID INT = SCOPE_IDENTITY();
+    
+    -- 2. Додаємо замовлення цих шпалер
+    INSERT INTO Orders (Customer_ID, OrderDate, Quantity)
+    VALUES (1, GETDATE(), 5);
+    
+    DECLARE @NewOrderID INT = SCOPE_IDENTITY();
+    
+    -- 3. Додаємо зв'язок між шпалерами і замовленням
+    INSERT INTO WallpaperOrders (Wallpaper_ID, Order_ID, Quantity)
+    VALUES (@NewWallpaperID, @NewOrderID, 5);
+    
+    -- 4. Оновлюємо залишок на складі
+    UPDATE Wallpaper SET Stock = Stock - 5 WHERE Wallpaper_ID = @NewWallpaperID;
+    
+    COMMIT TRANSACTION;
+    PRINT 'Усі операції виконані успішно';
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION;
+    PRINT 'Помилка: ' + ERROR_MESSAGE();
+END CATCH;
