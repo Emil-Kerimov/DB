@@ -621,3 +621,103 @@ FOREIGN KEY (Wallpaper_ID) REFERENCES Wallpaper(Wallpaper_ID);
 CREATE NONCLUSTERED INDEX IX_Wallpaper_Price ON Wallpaper(Price);
 --t7
 CREATE UNIQUE INDEX IX_Customer_Email_Unique ON Customer(Email);
+--t8
+-- Створення індексу з включеними стовпцями
+CREATE NONCLUSTERED INDEX IX_Wallpaper_Stock_INCLUDE 
+ON Wallpaper(Stock) INCLUDE (Name, Price);
+
+-- Порівняння планів виконання
+SELECT Name, Price FROM Wallpaper WHERE Stock < 50;
+--9
+CREATE NONCLUSTERED INDEX IX_Orders_LegalCustomers 
+ON Orders(Customer_ID)
+WHERE Customer_ID > 50; -- ID юридичних клієнтів
+--10
+SELECT
+ DB_NAME() AS [База_даних],
+ OBJECT_NAME(i.[object_id]) AS [Таблиця],
+ i.name AS [Індекс],
+ i.type_desc AS [Тип_індексу],
+ i.is_unique AS [Унікальний],
+ ps.avg_fragmentation_in_percent AS [Фрагментація_у_%],
+ ps.page_count AS [Кількість_сторінок]
+FROM
+ sys.indexes AS i
+INNER JOIN
+ sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, 'LIMITED') AS ps
+ ON i.[object_id] = ps.[object_id] AND i.index_id = ps.index_id
+WHERE
+ i.type > 0 AND i.is_hypothetical = 0
+ORDER BY
+ ps.avg_fragmentation_in_percent DESC;
+--11
+ALTER INDEX IX_Wallpaper_Price ON Wallpaper REORGANIZE;
+--12
+ALTER INDEX IX_Wallpaper_Clustered ON Wallpaper REBUILD;
+--13
+DROP INDEX IX_Wallpaper_Stock_INCLUDE ON Wallpaper;
+--14
+-- Переглянути наявні індекси для таблиці Wallpaper
+SELECT 
+    i.name AS index_name,
+    i.type_desc AS index_type,
+    c.name AS column_name
+FROM 
+    sys.indexes i
+INNER JOIN 
+    sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+INNER JOIN 
+    sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+WHERE 
+    i.object_id = OBJECT_ID('Wallpaper');
+-- Видалити існуючий індекс, якщо він є
+IF EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Wallpaper_Price' AND object_id = OBJECT_ID('Wallpaper'))
+BEGIN
+    DROP INDEX IX_Wallpaper_Price ON Wallpaper;
+END
+-- 1. Очистити кеш (для точних результатів тесту)
+DBCC FREEPROCCACHE;
+DBCC DROPCLEANBUFFERS;
+
+-- 2. Виконати запит БЕЗ індексу (фіксуємо час)
+SET STATISTICS TIME ON;
+SELECT * FROM Wallpaper WHERE Price BETWEEN 20 AND 30;
+SET STATISTICS TIME OFF;
+-- Зафіксувати час виконання та план (Clustered Index Scan)
+
+-- 3. Створити індекс
+CREATE NONCLUSTERED INDEX IX_Wallpaper_Price ON Wallpaper(Price);
+
+-- 4. Очистити кеш знову
+DBCC FREEPROCCACHE;
+DBCC DROPCLEANBUFFERS;
+
+-- 5. Виконати запит З індексом (фіксуємо час)
+SET STATISTICS TIME ON;
+SELECT * FROM Wallpaper WHERE Price BETWEEN 20 AND 30;
+SET STATISTICS TIME OFF;
+-- Зафіксувати час виконання та план
+--t 4 lab 5
+SELECT * FROM Wallpaper WHERE Price BETWEEN 20 AND 30;
+
+SELECT c.Customer_ID, COUNT(o.Order_ID) AS OrderCount FROM Customer c JOIN Orders o ON c.Customer_ID = o.Customer_ID GROUP BY c.Customer_ID;
+
+SELECT w.Name, SUM(wo.Quantity) AS TotalSold FROM Wallpaper w JOIN WallpaperOrders wo ON w.Wallpaper_ID = wo.Wallpaper_ID GROUP BY w.Name;
+
+-- task6 lab 5
+SELECT
+    OBJECT_NAME(i.object_id) AS TableName,
+    i.name AS IndexName,
+    i.type_desc AS IndexType,
+    i.is_unique AS IsUnique,
+    ips.avg_fragmentation_in_percent AS Fragmentation,
+    ips.page_count AS PageCount
+FROM 
+    sys.indexes i
+JOIN 
+    sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, 'LIMITED') ips
+    ON i.object_id = ips.object_id AND i.index_id = ips.index_id
+WHERE 
+    i.object_id = OBJECT_ID('Wallpaper') OR
+    i.object_id = OBJECT_ID('Customer') OR
+    i.object_id = OBJECT_ID('Orders');

@@ -521,3 +521,122 @@ INSERT INTO WallpaperOrders (Wallpaper_ID, Order_ID, Quantity) VALUES
 (98, 72, 10),
 (99, 72, 9),
 (100, 73, 11);
+-- Додавання 500 записів
+WITH Numbers AS (
+    SELECT TOP 500 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS n
+    FROM sys.objects a
+    CROSS JOIN sys.objects b
+)
+INSERT INTO Wallpaper (Name, Price, Stock)
+SELECT 
+    'Wallpaper_' + CAST(n AS VARCHAR),
+    ROUND(RAND(CHECKSUM(NEWID())) * 100 + 5, 2),
+    FLOOR(RAND(CHECKSUM(NEWID())) * 200) + 10
+FROM Numbers;
+
+-- 1000 записів
+WITH Numbers AS (
+    SELECT TOP 1000 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS n
+    FROM sys.objects a
+    CROSS JOIN sys.objects b
+    CROSS JOIN sys.objects c
+)
+INSERT INTO Wallpaper (Name, Price, Stock)
+SELECT 
+    'Wallpaper_' + CAST(n AS VARCHAR),
+    ROUND(RAND(CHECKSUM(NEWID())) * 100 + 5, 2),
+    FLOOR(RAND(CHECKSUM(NEWID())) * 200) + 10
+FROM Numbers;
+
+-- 10000 записів (з використанням циклу для великих обсягів)
+DECLARE @i INT = 1;
+WHILE @i <= 10000
+BEGIN
+    INSERT INTO Wallpaper (Name, Price, Stock)
+    VALUES (
+        'Wallpaper_' + CAST(@i AS VARCHAR),
+        ROUND(RAND() * 100 + 5, 2),
+        FLOOR(RAND() * 200) + 10
+    );
+    SET @i = @i + 1;
+    
+    IF @i % 1000 = 0 -- Коміт кожні 1000 записів
+        BEGIN TRANSACTION;
+END;
+-- Додавання ще 9000 (разом 10 000)
+-- Використовуємо цикл для великої кількості даних
+DECLARE @i INT = 1001;
+WHILE @i <= 10000
+BEGIN
+    INSERT INTO Wallpaper (Name, Price, Stock)
+    VALUES (
+        'Wallpaper_' + CAST(@i AS VARCHAR),
+        ROUND(RAND() * 100 + 5, 2),
+        FLOOR(RAND() * 200) + 10
+    );
+    SET @i = @i + 1;
+END;
+
+-- Додавання 500 клієнтів (250 фіз, 250 юр)
+INSERT INTO Customer (Email, Type)
+SELECT 
+    'customer' + CAST(ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) AS VARCHAR) + '@example.com',
+    CASE WHEN ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) % 2 = 0 THEN 'Individual' ELSE 'Legal' END
+FROM 
+    sys.objects a
+CROSS JOIN 
+    sys.objects b
+WHERE 
+    ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) <= 500;
+
+-- Додаткові дані для IndividualCustomer
+INSERT INTO IndividualCustomer (Customer_ID, Name, Surname, Phone)
+SELECT 
+    Customer_ID, 
+    'Name_' + CAST(ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) AS VARCHAR),
+    'Surname_' + CAST(ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) AS VARCHAR),
+    '380' + CAST(FLOOR(RAND() * 90000000 + 10000000) AS VARCHAR)
+FROM 
+    Customer
+WHERE 
+    Type = 'Individual' AND
+    Customer_ID NOT IN (SELECT Customer_ID FROM IndividualCustomer)
+    AND ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) <= 250;
+
+-- Додаткові дані для LegalCustomer
+INSERT INTO LegalCustomer (Customer_ID, Business_Address)
+SELECT 
+    Customer_ID,
+    'Business Address ' + CAST(ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) AS VARCHAR) + ', Kyiv'
+FROM 
+    Customer
+WHERE 
+    Type = 'Legal' AND
+    Customer_ID NOT IN (SELECT Customer_ID FROM LegalCustomer)
+    AND ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) <= 250;
+
+	-- Додавання 500 замовлень
+INSERT INTO Orders (Customer_ID, OrderDate, Quantity)
+SELECT 
+    (SELECT TOP 1 Customer_ID FROM Customer ORDER BY NEWID()),
+    DATEADD(DAY, -FLOOR(RAND() * 365), GETDATE()),
+    FLOOR(RAND() * 10) + 1
+FROM 
+    sys.objects a
+CROSS JOIN 
+    sys.objects b
+WHERE 
+    ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) <= 500;
+
+-- Додавання зв'язків у WallpaperOrders
+INSERT INTO WallpaperOrders (Wallpaper_ID, Order_ID, Quantity)
+SELECT 
+    (SELECT TOP 1 Wallpaper_ID FROM Wallpaper ORDER BY NEWID()),
+    (SELECT TOP 1 Order_ID FROM Orders ORDER BY NEWID()),
+    FLOOR(RAND() * 5) + 1
+FROM 
+    sys.objects a
+CROSS JOIN 
+    sys.objects b
+WHERE 
+    ROW_NUMBER() OVER(ORDER BY (SELECT NULL)) <= 1000;

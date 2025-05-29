@@ -12,3 +12,12 @@ DROP TABLE IndividualCustomer;
 DROP TABLE LegalCustomer;
 DROP TABLE Customer;
 DROP TABLE Wallpaper;
+
+-- Відключаємо індекси перед видаленням
+ALTER INDEX ALL ON Wallpaper DISABLE;
+
+-- Виконуємо видалення
+DELETE FROM Wallpaper;
+
+-- Включаємо індекси назад
+ALTER INDEX ALL ON Wallpaper REBUILD;
