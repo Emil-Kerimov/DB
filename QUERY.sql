@@ -899,3 +899,25 @@ BEGIN CATCH
     ROLLBACK TRANSACTION;
     PRINT 'Помилка: ' + ERROR_MESSAGE();
 END CATCH;
+
+-- p7 t 3
+BEGIN TRANSACTION;
+BEGIN TRY
+    -- Оновлення запасів шпалер
+    UPDATE Wallpaper SET Stock = Stock - 5 WHERE Wallpaper_ID = 1;
+    
+    -- Додавання нового замовлення
+    INSERT INTO Orders (Customer_ID, OrderDate, Quantity)
+    VALUES (1, GETDATE(), 5);
+    
+    -- Додавання зв'язку між замовленням і шпалерами
+    INSERT INTO WallpaperOrders (Wallpaper_ID, Order_ID, Quantity)
+    VALUES (1, SCOPE_IDENTITY(), 5);
+    
+    COMMIT TRANSACTION;
+    PRINT 'Транзакція успішно виконана';
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION;
+    PRINT 'Помилка: ' + ERROR_MESSAGE();
+END CATCH;

@@ -45,3 +45,23 @@ mcr.microsoft.com/mssql/server:2022-latest
    
    -- Тест AFTER UPDATE
    UPDATE Wallpaper SET Price = Price * 1.1 WHERE Wallpaper_ID = 1;
+
+# Виконання скриптів VIEW.SQL:
+
+Відкрийте файл VIEW.SQL у SQL Server Management Studio
+
+Виконайте весь скрипт або окремі частини
+
+## Приклади використання:
+-- Вибрати всіх індивідуальних клієнтів
+SELECT * FROM vIndividualCustomerNames;
+
+-- Переглянути статистику замовлень
+SELECT * FROM vCustomerOrderStats WHERE OrderCount > 3;
+Представлення	Опис
+vIndividualCustomerNames	Імена фізичних осіб
+vLegalCustomers	Юридичні клієнти
+vCustomerOrders	Замовлення клієнтів
+vCustomerOrderStats	Статистика замовлень
+vPremiumWallpapers	Дорогі шпалери (з обмеженням)
+vEncryptedCustomerInfo	Шифрована інформація про клієнтів
