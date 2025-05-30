@@ -54,3 +54,10 @@ CREATE TABLE Products (
     ON DELETE CASCADE
     ON UPDATE CASCADE
 );
+CREATE DATABASE WallpaperStoreDB;
+GO
+SELECT
+    CASE
+        WHEN DB_ID('WallpaperStoreDB') IS NOT NULL THEN 'База даних існує'
+        ELSE 'База даних НЕ існує'
+    END AS DatabaseStatus;
